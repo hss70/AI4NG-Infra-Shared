@@ -67,18 +67,8 @@ Resources:
                   - cloudformation:*
                 Resource: '*'
 
-  CloudFormationRole:
-    Type: AWS::IAM::Role
-    Properties:
-      AssumeRolePolicyDocument:
-        Version: '2012-10-17'
-        Statement:
-          - Effect: Allow
-            Principal:
-              Service: cloudformation.amazonaws.com
-            Action: sts:AssumeRole
-      ManagedPolicyArns:
-        - arn:aws:iam::aws:policy/PowerUserAccess
+  # Using existing CloudFormation role
+  # CloudFormationRole: cdk-accel-cfn-exec-role-748752133403-eu-west-2
 
   BuildProject:
     Type: AWS::CodeBuild::Project
@@ -147,7 +137,7 @@ Resources:
                 StackName: AI4NG-Auth-dev
                 TemplatePath: BuildOutput::packaged-template.yaml
                 Capabilities: CAPABILITY_NAMED_IAM
-                RoleArn: !GetAtt CloudFormationRole.Arn
+                RoleArn: !Sub arn:aws:iam::${AWS::AccountId}:role/cdk-accel-cfn-exec-role-748752133403-eu-west-2
                 ParameterOverrides: |
                   {
                     "Environment": "dev"
@@ -177,7 +167,7 @@ Resources:
                 StackName: AI4NG-Auth-prod
                 TemplatePath: BuildOutput::packaged-template.yaml
                 Capabilities: CAPABILITY_NAMED_IAM
-                RoleArn: !GetAtt CloudFormationRole.Arn
+                RoleArn: !Sub arn:aws:iam::${AWS::AccountId}:role/cdk-accel-cfn-exec-role-748752133403-eu-west-2
                 ParameterOverrides: |
                   {
                     "Environment": "prod"
