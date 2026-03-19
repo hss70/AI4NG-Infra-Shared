@@ -1,0 +1,21 @@
+version: 0.2
+
+phases:
+  install:
+    commands:
+      - sam --version
+      - aws --version
+
+  build:
+    commands:
+      - sam validate --template-file identity/template.yaml
+      - sam validate --template-file shared-api/template.yaml
+      - aws cloudformation validate-template --template-body file://identity/template.yaml
+      - aws cloudformation validate-template --template-body file://shared-api/template.yaml
+
+artifacts:
+  files:
+    - identity/template.yaml
+    - identity/parameters/dev.json
+    - shared-api/template.yaml
+    - shared-api/parameters/dev.json
