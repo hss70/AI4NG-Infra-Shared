@@ -1,0 +1,55 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: AI4NG Artifact Store
+
+Parameters:
+  Environment:
+    Type: String
+    AllowedValues:
+      - dev
+      - staging
+      - prod
+    Default: dev
+
+Resources:
+  SamArtifactBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub ai4ng-${Environment}-sam-artifacts-${AWS::AccountId}
+      VersioningConfiguration:
+        Status: Enabled
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+
+  SamArtifactBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref SamArtifactBucket
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: DenyInsecureTransport
+            Effect: Deny
+            Principal: "*"
+            Action: "s3:*"
+            Resource:
+              - !GetAtt SamArtifactBucket.Arn
+              - !Sub ${SamArtifactBucket.Arn}/*
+            Condition:
+              Bool:
+                aws:SecureTransport: false
+
+Outputs:
+  SamArtifactBucketName:
+    Description: S3 bucket used by SAM packaging
+    Value: !Ref SamArtifactBucket
+    Export:
+      Name: !Sub AI4NG-${Environment}-SamArtifactBucketName
+
+  SamArtifactBucketArn:
+    Description: ARN of the SAM packaging bucket
+    Value: !GetAtt SamArtifactBucket.Arn
+    Export:
+      Name: !Sub AI4NG-${Environment}-SamArtifactBucketArn
