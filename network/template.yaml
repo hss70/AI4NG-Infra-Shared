@@ -1,0 +1,282 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: Private HA VPC with endpoints for EEG processing pipeline
+Parameters:
+  Environment:
+    Type: String
+    AllowedValues: [dev, staging, prod]
+    Default: dev
+Resources:
+  # Existing VPC Resources (unchanged)
+  PrivateVPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: 10.0.0.0/16
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+      Tags:
+        - Key: Name
+          Value: PrivateVPC
+
+  PrivateSubnet1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref PrivateVPC
+      CidrBlock: 10.0.1.0/24
+      MapPublicIpOnLaunch: false
+      AvailabilityZone: !Select [0, !GetAZs ""]
+      Tags:
+        - Key: Name
+          Value: PrivateSubnet1
+
+  PrivateSubnet2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref PrivateVPC
+      CidrBlock: 10.0.2.0/24
+      MapPublicIpOnLaunch: false
+      AvailabilityZone: !Select [1, !GetAZs ""]
+      Tags:
+        - Key: Name
+          Value: PrivateSubnet2
+
+  PrivateRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref PrivateVPC
+      Tags:
+        - Key: Name
+          Value: PrivateRouteTable
+
+  Subnet1RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PrivateSubnet1
+      RouteTableId: !Ref PrivateRouteTable
+
+  Subnet2RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PrivateSubnet2
+      RouteTableId: !Ref PrivateRouteTable
+
+  # === VPC Endpoints ===
+  S3VPCEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      ServiceName: !Sub "com.amazonaws.${AWS::Region}.s3"
+      VpcId: !Ref PrivateVPC
+      RouteTableIds:
+        - !Ref PrivateRouteTable
+      VpcEndpointType: Gateway
+      Tags:
+        - Key: Name
+          Value: S3VPCEndpoint
+
+  DynamoDBVPCEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      ServiceName: !Sub "com.amazonaws.${AWS::Region}.dynamodb"
+      VpcId: !Ref PrivateVPC
+      RouteTableIds:
+        - !Ref PrivateRouteTable
+      VpcEndpointType: Gateway
+      Tags:
+        - Key: Name
+          Value: DynamoDBVPCEndpoint
+
+  # New EventBridge Endpoint
+  EventBridgeEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      ServiceName: !Sub "com.amazonaws.${AWS::Region}.events"
+      VpcId: !Ref PrivateVPC
+      VpcEndpointType: Interface
+      SubnetIds:
+        - !Ref PrivateSubnet1
+        - !Ref PrivateSubnet2
+      SecurityGroupIds:
+        - !Ref VPCInterfaceEndpointSG
+      PrivateDnsEnabled: true
+      Tags:
+        - Key: Name
+          Value: EventBridgeEndpoint
+
+  # SNS Endpoint for Lambda notifications
+  SNSEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      ServiceName: !Sub "com.amazonaws.${AWS::Region}.sns"
+      VpcId: !Ref PrivateVPC
+      VpcEndpointType: Interface
+      SubnetIds:
+        - !Ref PrivateSubnet1
+        - !Ref PrivateSubnet2
+      SecurityGroupIds:
+        - !Ref VPCInterfaceEndpointSG
+      PrivateDnsEnabled: true
+      Tags:
+        - Key: Name
+          Value: SNSEndpoint
+
+  # Existing Interface Endpoints
+  VPCInterfaceEndpointSG:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: SG for interface endpoints
+      VpcId: !Ref PrivateVPC
+      SecurityGroupIngress:
+        - IpProtocol: -1
+          CidrIp: 10.0.0.0/16
+      SecurityGroupEgress:
+        - IpProtocol: -1
+          CidrIp: 0.0.0.0/0
+      Tags:
+        - Key: Name
+          Value: EndpointSG
+
+  ECRAPIEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      ServiceName: !Sub "com.amazonaws.${AWS::Region}.ecr.api"
+      VpcId: !Ref PrivateVPC
+      VpcEndpointType: Interface
+      SubnetIds:
+        - !Ref PrivateSubnet1
+        - !Ref PrivateSubnet2
+      SecurityGroupIds:
+        - !Ref VPCInterfaceEndpointSG
+      PrivateDnsEnabled: true
+      Tags:
+        - Key: Name
+          Value: ECRAPIEndpoint
+
+  ECRDKREndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      ServiceName: !Sub "com.amazonaws.${AWS::Region}.ecr.dkr"
+      VpcId: !Ref PrivateVPC
+      VpcEndpointType: Interface
+      SubnetIds:
+        - !Ref PrivateSubnet1
+        - !Ref PrivateSubnet2
+      SecurityGroupIds:
+        - !Ref VPCInterfaceEndpointSG
+      PrivateDnsEnabled: true
+      Tags:
+        - Key: Name
+          Value: ECRDKREndpoint
+
+  CloudWatchLogsEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      ServiceName: !Sub "com.amazonaws.${AWS::Region}.logs"
+      VpcId: !Ref PrivateVPC
+      VpcEndpointType: Interface
+      SubnetIds:
+        - !Ref PrivateSubnet1
+        - !Ref PrivateSubnet2
+      SecurityGroupIds:
+        - !Ref VPCInterfaceEndpointSG
+      PrivateDnsEnabled: true
+      Tags:
+        - Key: Name
+          Value: CloudWatchLogsEndpoint
+
+  PrivateSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Restricted access for ECS tasks
+      VpcId: !Ref PrivateVPC
+      SecurityGroupIngress:
+        - IpProtocol: "-1"
+          CidrIp: 10.0.0.0/16
+      SecurityGroupEgress:
+        - IpProtocol: "-1"
+          CidrIp: 10.0.0.0/16
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          DestinationSecurityGroupId: !Ref VPCInterfaceEndpointSG
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 0.0.0.0/0
+      Tags:
+        - Key: Name
+          Value: PrivateSG
+
+Outputs:
+  # Core Networking
+  VPCId:
+    Description: VPC ID
+    Value: !Ref PrivateVPC
+    Export:
+      Name: !Sub "${AWS::StackName}-VpcId"
+
+  PrivateSubnetIds:
+    Description: Comma-separated private subnet IDs
+    Value: !Join [",", [!Ref PrivateSubnet1, !Ref PrivateSubnet2]]
+    Export:
+      Name: !Sub "${AWS::StackName}-PrivateSubnetIds"
+
+  # Security Groups
+  DefaultSecurityGroupId:
+    Description: Default VPC security group
+    Value: !GetAtt PrivateVPC.DefaultSecurityGroup
+    Export:
+      Name: !Sub "${AWS::StackName}-DefaultSG"
+
+  InterfaceEndpointSGId:
+    Description: Security Group for interface endpoints
+    Value: !Ref VPCInterfaceEndpointSG
+    Export:
+      Name: !Sub "${AWS::StackName}-InterfaceEndpointSG"
+
+  PrivateSecurityGroupId:
+    Description: Private workload security group
+    Value: !Ref PrivateSecurityGroup
+    Export:
+      Name: !Sub "${AWS::StackName}-PrivateSG"
+
+  # VPC Endpoints
+  S3EndpointId:
+    Description: S3 VPC Endpoint ID
+    Value: !Ref S3VPCEndpoint
+    Export:
+      Name: !Sub "${AWS::StackName}-S3Endpoint"
+
+  DynamoDBEndpointId:
+    Description: DynamoDB VPC Endpoint ID
+    Value: !Ref DynamoDBVPCEndpoint
+    Export:
+      Name: !Sub "${AWS::StackName}-DynamoDBEndpoint"
+
+  EventBridgeEndpointId:
+    Description: EventBridge VPC Endpoint ID
+    Value: !Ref EventBridgeEndpoint
+    Export:
+      Name: !Sub "${AWS::StackName}-EventBridgeEndpoint"
+
+  ECRAPIEndpointId:
+    Description: ECR API Endpoint ID
+    Value: !Ref ECRAPIEndpoint
+    Export:
+      Name: !Sub "${AWS::StackName}-ECRAPIEndpoint"
+
+  ECRDKREndpointId:
+    Description: ECR Docker Endpoint ID
+    Value: !Ref ECRDKREndpoint
+    Export:
+      Name: !Sub "${AWS::StackName}-ECRDKREndpoint"
+
+  CloudWatchLogsEndpointId:
+    Description: CloudWatch Logs Endpoint ID
+    Value: !Ref CloudWatchLogsEndpoint
+    Export:
+      Name: !Sub "${AWS::StackName}-CloudWatchLogsEndpoint"
+
+  SNSEndpointId:
+    Description: SNS VPC Endpoint ID
+    Value: !Ref SNSEndpoint
+    Export:
+      Name: !Sub "${AWS::StackName}-SNSEndpoint"

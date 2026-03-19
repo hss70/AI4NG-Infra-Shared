@@ -1,0 +1,121 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+Description: AI4NG Identity Stack (Cognito User Pools)
+
+Parameters:
+  Environment:
+    Type: String
+    AllowedValues: [dev, staging, prod]
+    Default: dev
+
+Resources:
+  # =========================
+  # PARTICIPANT USER POOL
+  # =========================
+  ParticipantUserPool:
+    Type: AWS::Cognito::UserPool
+    Properties:
+      UserPoolName: !Sub ai4ng-${Environment}-participants
+      UsernameAttributes:
+        - email
+      AutoVerifiedAttributes:
+        - email
+      Schema:
+        - Name: email
+          Required: true
+          Mutable: true
+        - Name: deviceId
+          Required: false
+          Mutable: true
+      Policies:
+        PasswordPolicy:
+          MinimumLength: 8
+          RequireUppercase: false
+          RequireLowercase: true
+          RequireNumbers: true
+          RequireSymbols: false
+      MfaConfiguration: OFF
+
+  ParticipantUserPoolClient:
+    Type: AWS::Cognito::UserPoolClient
+    Properties:
+      ClientName: !Sub ai4ng-${Environment}-participant-client
+      UserPoolId: !Ref ParticipantUserPool
+      GenerateSecret: false
+      ExplicitAuthFlows:
+        - ALLOW_USER_PASSWORD_AUTH
+        - ALLOW_REFRESH_TOKEN_AUTH
+      AllowedOAuthFlowsUserPoolClient: false
+
+  # =========================
+  # RESEARCHER USER POOL
+  # =========================
+  ResearcherUserPool:
+    Type: AWS::Cognito::UserPool
+    Properties:
+      UserPoolName: !Sub ai4ng-${Environment}-researchers
+      UsernameAttributes:
+        - email
+      AutoVerifiedAttributes:
+        - email
+      Policies:
+        PasswordPolicy:
+          MinimumLength: 12
+          RequireUppercase: true
+          RequireLowercase: true
+          RequireNumbers: true
+          RequireSymbols: true
+      MfaConfiguration: OPTIONAL
+
+  ResearcherUserPoolClient:
+    Type: AWS::Cognito::UserPoolClient
+    Properties:
+      ClientName: !Sub ai4ng-${Environment}-researcher-client
+      UserPoolId: !Ref ResearcherUserPool
+      GenerateSecret: false
+      ExplicitAuthFlows:
+        - ALLOW_USER_PASSWORD_AUTH
+        - ALLOW_REFRESH_TOKEN_AUTH
+      AllowedOAuthFlowsUserPoolClient: false
+
+  # =========================
+  # OPTIONAL: GROUPS (RESEARCHERS)
+  # =========================
+  ResearcherAdminGroup:
+    Type: AWS::Cognito::UserPoolGroup
+    Properties:
+      GroupName: Admin
+      UserPoolId: !Ref ResearcherUserPool
+      Description: Admin researchers
+
+  ResearcherStandardGroup:
+    Type: AWS::Cognito::UserPoolGroup
+    Properties:
+      GroupName: Researcher
+      UserPoolId: !Ref ResearcherUserPool
+      Description: Standard researchers
+
+Outputs:
+  # Participant
+  ParticipantUserPoolId:
+    Value: !Ref ParticipantUserPool
+    Export:
+      Name: !Sub AI4NG-${Environment}-ParticipantUserPoolId
+
+  ParticipantUserPoolArn:
+    Value: !GetAtt ParticipantUserPool.Arn
+
+  ParticipantUserPoolClientId:
+    Value: !Ref ParticipantUserPoolClient
+
+  # Researcher
+  ResearcherUserPoolId:
+    Value: !Ref ResearcherUserPool
+    Export:
+      Name: !Sub AI4NG-${Environment}-ResearcherUserPoolId
+
+  ResearcherUserPoolArn:
+    Value: !GetAtt ResearcherUserPool.Arn
+
+  ResearcherUserPoolClientId:
+    Value: !Ref ResearcherUserPoolClient

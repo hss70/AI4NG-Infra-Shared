@@ -1,0 +1,137 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+Description: AI4NG Shared API Stack (HTTP API, stage, logging, Cognito authorizers)
+
+Parameters:
+  Environment:
+    Type: String
+    AllowedValues:
+      - dev
+      - staging
+      - prod
+    Default: dev
+
+  ParticipantUserPoolId:
+    Type: String
+    Description: Cognito User Pool ID for participant users
+
+  ParticipantUserPoolClientId:
+    Type: String
+    Description: Cognito App Client ID for participant users
+
+  ResearcherUserPoolId:
+    Type: String
+    Description: Cognito User Pool ID for researcher users
+
+  ResearcherUserPoolClientId:
+    Type: String
+    Description: Cognito App Client ID for researcher users
+
+Resources:
+  SharedApiAccessLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub /aws/apigateway/ai4ng-${Environment}-shared-http-api
+      RetentionInDays: 30
+
+  SharedHttpApi:
+    Type: AWS::Serverless::HttpApi
+    Properties:
+      Name: !Sub ai4ng-${Environment}-shared-api
+      StageName: !Ref Environment
+      CorsConfiguration:
+        AllowOrigins:
+          - "*"
+        AllowHeaders:
+          - Authorization
+          - Content-Type
+          - X-Amz-Date
+          - X-Api-Key
+          - X-Amz-Security-Token
+        AllowMethods:
+          - GET
+          - POST
+          - PUT
+          - PATCH
+          - DELETE
+          - OPTIONS
+        MaxAge: 600
+      AccessLogSettings:
+        DestinationArn: !GetAtt SharedApiAccessLogGroup.Arn
+        Format: >-
+          {
+            "requestId":"$context.requestId",
+            "ip":"$context.identity.sourceIp",
+            "requestTime":"$context.requestTime",
+            "httpMethod":"$context.httpMethod",
+            "routeKey":"$context.routeKey",
+            "status":"$context.status",
+            "protocol":"$context.protocol",
+            "responseLength":"$context.responseLength",
+            "integrationError":"$context.integrationErrorMessage",
+            "authorizerError":"$context.authorizer.error",
+            "jwtClaimsSub":"$context.authorizer.jwt.claims.sub"
+          }
+
+  ParticipantAuthorizer:
+    Type: AWS::ApiGatewayV2::Authorizer
+    Properties:
+      ApiId: !Ref SharedHttpApi
+      AuthorizerType: JWT
+      IdentitySource:
+        - $request.header.Authorization
+      Name: !Sub ai4ng-${Environment}-participant-authorizer
+      JwtConfiguration:
+        Audience:
+          - !Ref ParticipantUserPoolClientId
+        Issuer: !Sub https://cognito-idp.${AWS::Region}.amazonaws.com/${ParticipantUserPoolId}
+
+  ResearcherAuthorizer:
+    Type: AWS::ApiGatewayV2::Authorizer
+    Properties:
+      ApiId: !Ref SharedHttpApi
+      AuthorizerType: JWT
+      IdentitySource:
+        - $request.header.Authorization
+      Name: !Sub ai4ng-${Environment}-researcher-authorizer
+      JwtConfiguration:
+        Audience:
+          - !Ref ResearcherUserPoolClientId
+        Issuer: !Sub https://cognito-idp.${AWS::Region}.amazonaws.com/${ResearcherUserPoolId}
+
+Outputs:
+  SharedHttpApiId:
+    Description: Shared HTTP API ID
+    Value: !Ref SharedHttpApi
+    Export:
+      Name: !Sub AI4NG-${Environment}-SharedHttpApiId
+
+  SharedHttpApiEndpoint:
+    Description: Base endpoint for the shared HTTP API
+    Value: !Sub https://${SharedHttpApi}.execute-api.${AWS::Region}.amazonaws.com/${Environment}
+    Export:
+      Name: !Sub AI4NG-${Environment}-SharedHttpApiEndpoint
+
+  SharedApiStageName:
+    Description: API stage name
+    Value: !Ref Environment
+    Export:
+      Name: !Sub AI4NG-${Environment}-SharedApiStageName
+
+  ParticipantAuthorizerId:
+    Description: API Gateway authorizer ID for participant routes
+    Value: !Ref ParticipantAuthorizer
+    Export:
+      Name: !Sub AI4NG-${Environment}-ParticipantAuthorizerId
+
+  ResearcherAuthorizerId:
+    Description: API Gateway authorizer ID for researcher routes
+    Value: !Ref ResearcherAuthorizer
+    Export:
+      Name: !Sub AI4NG-${Environment}-ResearcherAuthorizerId
+
+  SharedApiAccessLogGroupName:
+    Description: CloudWatch log group for shared API access logs
+    Value: !Ref SharedApiAccessLogGroup
+    Export:
+      Name: !Sub AI4NG-${Environment}-SharedApiAccessLogGroupName
