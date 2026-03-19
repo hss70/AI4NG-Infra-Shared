@@ -42,21 +42,7 @@ Resources:
         MaxAge: 600
       AccessLogSettings:
         DestinationArn: !GetAtt SharedApiAccessLogGroup.Arn
-        Format: >-
-          {
-            "requestId":"$context.requestId",
-            "ip":"$context.identity.sourceIp",
-            "requestTime":"$context.requestTime",
-            "httpMethod":"$context.httpMethod",
-            "routeKey":"$context.routeKey",
-            "status":"$context.status",
-            "protocol":"$context.protocol",
-            "responseLength":"$context.responseLength",
-            "integrationError":"$context.integrationErrorMessage",
-            "authorizerError":"$context.authorizer.error",
-            "jwtClaimsSub":"$context.authorizer.jwt.claims.sub"
-          }
-
+        Format: '{"requestId":"$context.requestId", "ip":"$context.identity.sourceIp", "requestTime":"$context.requestTime", "httpMethod":"$context.httpMethod", "routeKey":"$context.routeKey", "status":"$context.status", "protocol":"$context.protocol", "responseLength":"$context.responseLength", "integrationError":"$context.integrationErrorMessage", "authorizerError":"$context.authorizer.error", "jwtClaimsSub":"$context.authorizer.jwt.claims.sub"}'
   ParticipantAuthorizer:
     Type: AWS::ApiGatewayV2::Authorizer
     Properties:
