@@ -11,22 +11,6 @@ Parameters:
       - prod
     Default: dev
 
-  ParticipantUserPoolId:
-    Type: String
-    Description: Cognito User Pool ID for participant users
-
-  ParticipantUserPoolClientId:
-    Type: String
-    Description: Cognito App Client ID for participant users
-
-  ResearcherUserPoolId:
-    Type: String
-    Description: Cognito User Pool ID for researcher users
-
-  ResearcherUserPoolClientId:
-    Type: String
-    Description: Cognito App Client ID for researcher users
-
 Resources:
   SharedApiAccessLogGroup:
     Type: AWS::Logs::LogGroup
@@ -83,8 +67,12 @@ Resources:
       Name: !Sub ai4ng-${Environment}-participant-authorizer
       JwtConfiguration:
         Audience:
-          - !Ref ParticipantUserPoolClientId
-        Issuer: !Sub https://cognito-idp.${AWS::Region}.amazonaws.com/${ParticipantUserPoolId}
+          - !ImportValue
+            "Fn::Sub": AI4NG-${Environment}-ParticipantUserPoolClientId
+        Issuer: !Sub
+          - https://cognito-idp.${AWS::Region}.amazonaws.com/${PoolId}
+          - PoolId: !ImportValue
+              "Fn::Sub": AI4NG-${Environment}-ParticipantUserPoolId
 
   ResearcherAuthorizer:
     Type: AWS::ApiGatewayV2::Authorizer
@@ -96,8 +84,12 @@ Resources:
       Name: !Sub ai4ng-${Environment}-researcher-authorizer
       JwtConfiguration:
         Audience:
-          - !Ref ResearcherUserPoolClientId
-        Issuer: !Sub https://cognito-idp.${AWS::Region}.amazonaws.com/${ResearcherUserPoolId}
+          - !ImportValue
+            "Fn::Sub": AI4NG-${Environment}-ResearcherUserPoolClientId
+        Issuer: !Sub
+          - https://cognito-idp.${AWS::Region}.amazonaws.com/${PoolId}
+          - PoolId: !ImportValue
+              "Fn::Sub": AI4NG-${Environment}-ResearcherUserPoolId
 
 Outputs:
   SharedHttpApiId:
