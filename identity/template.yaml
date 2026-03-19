@@ -9,9 +9,6 @@ Parameters:
     Default: dev
 
 Resources:
-  # =========================
-  # PARTICIPANT USER POOL
-  # =========================
   ParticipantUserPool:
     Type: AWS::Cognito::UserPool
     Properties:
@@ -20,13 +17,6 @@ Resources:
         - email
       AutoVerifiedAttributes:
         - email
-      Schema:
-        - Name: email
-          Required: true
-          Mutable: true
-        - Name: deviceId
-          Required: false
-          Mutable: true
       Policies:
         PasswordPolicy:
           MinimumLength: 8
@@ -47,9 +37,6 @@ Resources:
         - ALLOW_REFRESH_TOKEN_AUTH
       AllowedOAuthFlowsUserPoolClient: false
 
-  # =========================
-  # RESEARCHER USER POOL
-  # =========================
   ResearcherUserPool:
     Type: AWS::Cognito::UserPool
     Properties:
@@ -65,7 +52,7 @@ Resources:
           RequireLowercase: true
           RequireNumbers: true
           RequireSymbols: true
-      MfaConfiguration: "OPTIONAL"
+      MfaConfiguration: "OFF"
 
   ResearcherUserPoolClient:
     Type: AWS::Cognito::UserPoolClient
@@ -78,9 +65,6 @@ Resources:
         - ALLOW_REFRESH_TOKEN_AUTH
       AllowedOAuthFlowsUserPoolClient: false
 
-  # =========================
-  # OPTIONAL: GROUPS (RESEARCHERS)
-  # =========================
   ResearcherAdminGroup:
     Type: AWS::Cognito::UserPoolGroup
     Properties:
@@ -96,7 +80,6 @@ Resources:
       Description: Standard researchers
 
 Outputs:
-  # Participant
   ParticipantUserPoolId:
     Value: !Ref ParticipantUserPool
     Export:
@@ -110,7 +93,6 @@ Outputs:
     Export:
       Name: !Sub AI4NG-${Environment}-ParticipantUserPoolClientId
 
-  # Researcher
   ResearcherUserPoolId:
     Value: !Ref ResearcherUserPool
     Export:
