@@ -10,8 +10,6 @@ phases:
     commands:
       - sam validate --template-file identity/template.yaml
       - sam validate --template-file shared-api/template.yaml
-      - aws cloudformation validate-template --template-body file://identity/template.yaml
-      - aws cloudformation validate-template --template-body file://shared-api/template.yaml
 
 artifacts:
   files:
