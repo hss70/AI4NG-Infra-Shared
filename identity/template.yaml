@@ -34,7 +34,7 @@ Resources:
           RequireLowercase: true
           RequireNumbers: true
           RequireSymbols: false
-      MfaConfiguration: OFF
+      MfaConfiguration: "OFF"
 
   ParticipantUserPoolClient:
     Type: AWS::Cognito::UserPoolClient
@@ -65,7 +65,7 @@ Resources:
           RequireLowercase: true
           RequireNumbers: true
           RequireSymbols: true
-      MfaConfiguration: OPTIONAL
+      MfaConfiguration: "OPTIONAL"
 
   ResearcherUserPoolClient:
     Type: AWS::Cognito::UserPoolClient
@@ -107,6 +107,8 @@ Outputs:
 
   ParticipantUserPoolClientId:
     Value: !Ref ParticipantUserPoolClient
+    Export:
+      Name: !Sub AI4NG-${Environment}-ParticipantUserPoolClientId
 
   # Researcher
   ResearcherUserPoolId:
@@ -119,3 +121,5 @@ Outputs:
 
   ResearcherUserPoolClientId:
     Value: !Ref ResearcherUserPoolClient
+    Export:
+      Name: !Sub AI4NG-${Environment}-ResearcherUserPoolClientId
