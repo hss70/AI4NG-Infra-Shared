@@ -15,6 +15,7 @@ Resources:
       UserPoolName: !Sub ai4ng-${Environment}-participants
       UsernameAttributes:
         - email
+        - username # Allow both email and username for participant login
       AutoVerifiedAttributes:
         - email
       Policies:
@@ -43,6 +44,7 @@ Resources:
       UserPoolName: !Sub ai4ng-${Environment}-researchers
       UsernameAttributes:
         - email
+        - username # Allow both email and username for researcher login
       AutoVerifiedAttributes:
         - email
       Policies:
