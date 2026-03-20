@@ -11,6 +11,7 @@ phases:
       - sam validate --template-file identity/template.yaml
       - sam validate --template-file shared-api/template.yaml
       - sam validate --template-file artifact-store/template.yaml
+      - sam validate --template-file ecr/template.yaml
 
 artifacts:
   files:
@@ -20,3 +21,5 @@ artifacts:
     - shared-api/parameters/dev.json
     - artifact-store/template.yaml
     - artifact-store/parameters/dev.json
+    - ecr/template.yaml
+    - ecr/parameters/dev.json

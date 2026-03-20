@@ -1,0 +1,73 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: AI4NG ECR Repositories
+
+Parameters:
+  Environment:
+    Type: String
+    AllowedValues:
+      - dev
+      - staging
+      - prod
+    Default: dev
+
+Resources:
+  ClassifierECR:
+    Type: AWS::ECR::Repository
+    Properties:
+      RepositoryName: !Sub ai4ng-${Environment}-eeg-classifier
+      ImageTagMutability: MUTABLE
+      ImageScanningConfiguration:
+        ScanOnPush: true
+      LifecyclePolicy:
+        LifecyclePolicyText: |
+          {
+            "rules": [
+              {
+                "rulePriority": 1,
+                "description": "Keep last 10 tagged images",
+                "selection": {
+                  "tagStatus": "tagged",
+                  "tagPrefixList": ["v", "latest"],
+                  "countType": "imageCountMoreThan",
+                  "countNumber": 10
+                },
+                "action": { "type": "expire" }
+              },
+              {
+                "rulePriority": 2,
+                "description": "Keep last 3 untagged images",
+                "selection": {
+                  "tagStatus": "untagged",
+                  "countType": "imageCountMoreThan",
+                  "countNumber": 3
+                },
+                "action": { "type": "expire" }
+              }
+            ]
+          }
+      Tags:
+        - Key: Project
+          Value: AI4NG
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: ManagedBy
+          Value: CloudFormation
+
+Outputs:
+  ClassifierECRRepositoryUri:
+    Description: URI for the ECR repository containing the classifier image
+    Value: !GetAtt ClassifierECR.RepositoryUri
+    Export:
+      Name: !Sub AI4NG-${Environment}-ClassifierECRRepositoryUri
+
+  ClassifierECRRepositoryArn:
+    Description: ARN of the ECR repository
+    Value: !GetAtt ClassifierECR.Arn
+    Export:
+      Name: !Sub AI4NG-${Environment}-ClassifierECRRepositoryArn
+
+  ClassifierECRRepositoryName:
+    Description: Name of the ECR repository
+    Value: !Ref ClassifierECR
+    Export:
+      Name: !Sub AI4NG-${Environment}-ClassifierECRRepositoryName
